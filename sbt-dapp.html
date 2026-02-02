@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>賃貸借契約 SBT発行システム</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .wallet-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+
+        .network-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            background: #4caf50;
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .network-badge.disconnected {
+            background: #ff5722;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin: 20px 0;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .sbt-display {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .sbt-display h3 {
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .sbt-info {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 4px solid #4caf50;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #f44336;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-left: 4px solid #2196f3;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .link {
+            color: #667eea;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .instructions h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #666;
+        }
+
+        .instructions li {
+            margin: 8px 0;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .contract-info {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .contract-info p {
+            color: #666;
+            font-size: 13px;
+            margin: 5px 0;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🏠 賃貸借契約 KYC SBT発行システム</h1>
+            <p style="color: #666; margin-top: 10px;">ブロックチェーン上で譲渡不可能な入居者証明トークンを発行</p>
+            
+            <div class="wallet-info">
+                <div>
+                    <span class="network-badge disconnected" id="networkBadge">未接続</span>
+                    <span id="walletAddress" style="margin-left: 15px; color: #666;">ウォレット未接続</span>
+                </div>
+                <button class="btn" id="connectBtn" onclick="connectWallet()">MetaMask接続</button>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Left: Mint SBT -->
+            <div class="card">
+                <h2>📝 SBT発行</h2>
+                
+                <div class="form-group">
+                    <label>氏名</label>
+                    <input type="text" id="userName" value="山田 太郎" placeholder="入居者氏名">
+                </div>
+
+                <div class="form-group">
+                    <label>User ID</label>
+                    <input type="text" id="userId" value="USER_2024_001" placeholder="一意のユーザーID">
+                </div>
+
+                <div class="form-group">
+                    <label>物件住所</label>
+                    <input type="text" id="propertyAddress" value="東京都渋谷区○○1-2-3" placeholder="契約物件住所">
+                </div>
+
+                <div class="form-group">
+                    <label>KYCレベル</label>
+                    <select id="kycLevel">
+                        <option value="1">基本認証</option>
+                        <option value="2" selected>拡張認証</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>有効期間（年）</label>
+                    <input type="number" id="validityYears" value="2" min="1" max="10">
+                </div>
+
+                <button class="btn" id="mintBtn" onclick="mintSBT()" disabled>
+                    SBTを発行
+                </button>
+
+                <div id="mintStatus"></div>
+
+                <div class="instructions">
+                    <h3>⚠️ 使用方法</h3>
+                    <ol>
+                        <li>MetaMaskをインストール</li>
+                        <li>Sepolia テストネットに切り替え</li>
+                        <li>テストETHを取得（faucet使用）</li>
+                        <li>「MetaMask接続」をクリック</li>
+                        <li>情報を入力して「SBTを発行」</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Right: View SBT -->
+            <div class="card">
+                <h2>🎫 SBT確認</h2>
+                
+                <div class="form-group">
+                    <label>確認するアドレス</label>
+                    <input type="text" id="checkAddress" placeholder="0x...">
+                    <button class="btn" onclick="checkSBT()" style="margin-top: 10px; width: 100%;">
+                        SBTを確認
+                    </button>
+                </div>
+
+                <div id="sbtDisplay"></div>
+                
+                <div class="contract-info">
+                    <h3 style="color: #333; margin-bottom: 10px;">📋 コントラクト情報</h3>
+                    <p><strong>ネットワーク:</strong> Sepolia Testnet</p>
+                    <p><strong>コントラクトアドレス:</strong></p>
+                    <p id="contractAddress" style="font-family: monospace; font-size: 12px;">デプロイ後に表示されます</p>
+                    <p style="margin-top: 10px;"><strong>注意:</strong> これはテストネットです。実際の価値はありません。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // コントラクト設定（実際にデプロイ後にアドレスを更新）
+        const CONTRACT_ADDRESS = "0xc9b1821620146021536f9962933773e5437693F9";
+        
+        const CONTRACT_ABI = [
+            "function mintSBT(address to, string memory userId, uint256 validityPeriod, bytes32 propertyHash, uint8 kycLevel) public returns (uint256)",
+            "function getSBTData(uint256 tokenId) public view returns (tuple(string userId, uint256 issuedDate, uint256 expiryDate, bytes32 propertyHash, uint8 kycLevel, bool isValid))",
+            "function addressToTokenId(address) public view returns (uint256)",
+            "function hasValidSBT(address account) public view returns (bool)",
+            "function isValidSBT(uint256 tokenId) public view returns (bool)",
+            "event SBTMinted(address indexed to, uint256 indexed tokenId, string userId)"
+        ];
+
+        let provider;
+        let signer;
+        let contract;
+        let userAddress;
+
+        // ウォレット接続
+        async function connectWallet() {
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    alert('MetaMaskをインストールしてください！');
+                    return;
+                }
+
+                // MetaMask接続
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                userAddress = await signer.getAddress();
+
+                // ネットワーク確認
+                const network = await provider.getNetwork();
+                
+                document.getElementById('walletAddress').textContent = 
+                    userAddress.substring(0, 6) + '...' + userAddress.substring(38);
+                
+                if (network.chainId === 11155111) { // Sepolia
+                    document.getElementById('networkBadge').textContent = 'Sepolia';
+                    document.getElementById('networkBadge').classList.remove('disconnected');
+                    
+                    // コントラクトインスタンス作成
+                    if (CONTRACT_ADDRESS !== "YOUR_CONTRACT_ADDRESS_HERE") {
+                        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                        document.getElementById('mintBtn').disabled = false;
+                        document.getElementById('contractAddress').textContent = CONTRACT_ADDRESS;
+                    } else {
+                        showStatus('mintStatus', 'info', '⚠️ コントラクトをデプロイしてアドレスを設定してください');
+                    }
+                } else {
+                    document.getElementById('networkBadge').textContent = '間違ったネットワーク';
+                    showStatus('mintStatus', 'error', 'Sepoliaテストネットに切り替えてください');
+                }
+
+            } catch (error) {
+                console.error('接続エラー:', error);
+                showStatus('mintStatus', 'error', 'ウォレット接続エラー: ' + error.message);
+            }
+        }
+
+        // SBT発行
+        async function mintSBT() {
+            try {
+                const mintBtn = document.getElementById('mintBtn');
+                mintBtn.disabled = true;
+                
+                showStatus('mintStatus', 'info', '<span class="loading"></span>トランザクション送信中...');
+
+                const userId = document.getElementById('userId').value;
+                const propertyAddress = document.getElementById('propertyAddress').value;
+                const kycLevel = parseInt(document.getElementById('kycLevel').value);
+                const validityYears = parseInt(document.getElementById('validityYears').value);
+                
+                // 物件アドレスをハッシュ化
+                const propertyHash = ethers.utils.id(propertyAddress);
+                
+                // 有効期間を秒に変換（年 * 365日 * 24時間 * 60分 * 60秒）
+                const validityPeriod = validityYears * 365 * 24 * 60 * 60;
+                
+                // SBT発行トランザクション
+                const tx = await contract.mintSBT(
+                    userAddress,
+                    userId,
+                    validityPeriod,
+                    propertyHash,
+                    kycLevel
+                );
+                
+                showStatus('mintStatus', 'info', '<span class="loading"></span>ブロックチェーンでの確認を待っています...');
+                
+                const receipt = await tx.wait();
+                
+                // イベントからトークンIDを取得
+                const event = receipt.events.find(e => e.event === 'SBTMinted');
+                const tokenId = event.args.tokenId.toString();
+                
+                showStatus('mintStatus', 'success', 
+                    `✅ SBT発行成功！<br>
+                    トークンID: ${tokenId}<br>
+                    Tx: <a href="https://sepolia.etherscan.io/tx/${receipt.transactionHash}" target="_blank" class="link">${receipt.transactionHash.substring(0, 10)}...</a>`
+                );
+                
+                mintBtn.disabled = false;
+                
+                // 自動的にSBTを表示
+                document.getElementById('checkAddress').value = userAddress;
+                setTimeout(() => checkSBT(), 2000);
+                
+            } catch (error) {
+                console.error('Mint エラー:', error);
+                showStatus('mintStatus', 'error', '❌ エラー: ' + error.message);
+                document.getElementById('mintBtn').disabled = false;
+            }
+        }
+
+        // SBT確認
+        async function checkSBT() {
+            try {
+                const address = document.getElementById('checkAddress').value;
+                
+                if (!ethers.utils.isAddress(address)) {
+                    showStatus('sbtDisplay', 'error', '無効なアドレスです');
+                    return;
+                }
+                
+                if (!contract) {
+                    document.getElementById('sbtDisplay').innerHTML = 
+                        '<div class="status error">ウォレットを接続してください</div>';
+                    return;
+                }
+
+                const tokenId = await contract.addressToTokenId(address);
+                
+                if (tokenId.toString() === '0') {
+                    document.getElementById('sbtDisplay').innerHTML = 
+                        '<div class="status info">このアドレスはSBTを保有していません</div>';
+                    return;
+                }
+                
+                const sbtData = await contract.getSBTData(tokenId);
+                const isValid = await contract.isValidSBT(tokenId);
+                
+                const issuedDate = new Date(sbtData.issuedDate.toNumber() * 1000);
+                const expiryDate = new Date(sbtData.expiryDate.toNumber() * 1000);
+                
+                document.getElementById('sbtDisplay').innerHTML = `
+                    <div class="sbt-display">
+                        <h3>🎫 入居者証明SBT</h3>
+                        <div class="sbt-info"><strong>トークンID:</strong> ${tokenId.toString()}</div>
+                        <div class="sbt-info"><strong>User ID:</strong> ${sbtData.userId}</div>
+                        <div class="sbt-info"><strong>発行日:</strong> ${issuedDate.toLocaleDateString('ja-JP')}</div>
+                        <div class="sbt-info"><strong>有効期限:</strong> ${expiryDate.toLocaleDateString('ja-JP')}</div>
+                        <div class="sbt-info"><strong>KYCレベル:</strong> ${sbtData.kycLevel === 1 ? '基本認証' : '拡張認証'}</div>
+                        <div class="sbt-info"><strong>ステータス:</strong> ${isValid ? '✅ 有効' : '❌ 無効/期限切れ'}</div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('確認エラー:', error);
+                showStatus('sbtDisplay', 'error', 'エラー: ' + error.message);
+            }
+        }
+
+        // ステータス表示
+        function showStatus(elementId, type, message) {
+            document.getElementById(elementId).innerHTML = 
+                `<div class="status ${type}">${message}</div>`;
+        }
+
+        // ネットワーク変更を検知
+        if (window.ethereum) {
+            window.ethereum.on('chainChanged', () => {
+                window.location.reload();
+            });
+            
+            window.ethereum.on('accountsChanged', () => {
+                window.location.reload();
+            });
+        }
+    </script>
+</body>
+</html>
