@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ライフライン契約申込</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .sbt-status {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .sbt-status.verified {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+        }
+
+        .sbt-status.not-verified {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+        }
+
+        .sbt-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .sbt-info-item {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .utility-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .utility-card {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .utility-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .utility-card.selected {
+            border-color: #667eea;
+            background: #e3f2fd;
+        }
+
+        .utility-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .utility-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .utility-provider {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .form-group {
+            margin: 20px 0;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .auto-filled {
+            background: #e8f5e9;
+            position: relative;
+        }
+
+        .auto-badge {
+            display: inline-block;
+            background: #4caf50;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        input:read-only {
+            background: #f5f5f5;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 4px solid #4caf50;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #f44336;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-left: 4px solid #2196f3;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+
+        @media (max-width: 768px) {
+            .utility-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>⚡ ライフライン契約申込</h1>
+            <p style="color: #666; margin-top: 10px;">SBTで本人確認済み - 簡単に電気・ガス・水道を契約</p>
+        </div>
+
+        <!-- SBT Verification -->
+        <div class="card">
+            <h2>🎫 SBT確認</h2>
+            
+            <div id="sbtStatus" class="sbt-status not-verified">
+                <p style="font-size: 18px; margin-bottom: 10px;">⏳ SBTを確認中...</p>
+                <button class="btn" onclick="verifySBT()" style="max-width: 300px; margin: 10px auto;">
+                    MetaMask接続してSBTを確認
+                </button>
+            </div>
+
+            <div id="sbtInfo" style="display: none;">
+                <div class="sbt-info">
+                    <h3 style="margin-bottom: 15px;">✅ SBT保有者</h3>
+                    <div class="sbt-info-item"><strong>User ID:</strong> <span id="sbtUserId"></span></div>
+                    <div class="sbt-info-item"><strong>発行日:</strong> <span id="sbtIssuedDate"></span></div>
+                    <div class="sbt-info-item"><strong>有効期限:</strong> <span id="sbtExpiryDate"></span></div>
+                    <div class="sbt-info-item"><strong>KYCレベル:</strong> <span id="sbtKycLevel"></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Utility Selection -->
+        <div class="card" id="utilitySelection" style="display: none;">
+            <h2>📋 契約するサービスを選択</h2>
+            
+            <div class="utility-grid">
+                <div class="utility-card" onclick="toggleUtility('electric')">
+                    <div class="utility-icon">💡</div>
+                    <div class="utility-name">電気</div>
+                    <div class="utility-provider">○○電力</div>
+                </div>
+                
+                <div class="utility-card" onclick="toggleUtility('gas')">
+                    <div class="utility-icon">🔥</div>
+                    <div class="utility-name">ガス</div>
+                    <div class="utility-provider">○○ガス</div>
+                </div>
+                
+                <div class="utility-card" onclick="toggleUtility('water')">
+                    <div class="utility-icon">💧</div>
+                    <div class="utility-name">水道</div>
+                    <div class="utility-provider">渋谷区水道局</div>
+                </div>
+            </div>
+
+            <div class="warning-box">
+                <strong>💡 ヒント:</strong> 複数選択可能です。選択したサービスに対して一括で申込できます。
+            </div>
+        </div>
+
+        <!-- Application Form -->
+        <div class="card" id="applicationForm" style="display: none;">
+            <h2>📝 契約情報入力</h2>
+            
+            <form id="contractForm">
+                <div class="form-group">
+                    <label>契約者氏名 <span class="auto-badge">SBTから自動入力</span></label>
+                    <input type="text" id="contractorName" readonly class="auto-filled">
+                </div>
+
+                <div class="form-group">
+                    <label>設置場所住所 <span class="auto-badge">SBTから自動入力</span></label>
+                    <input type="text" id="propertyAddress" readonly class="auto-filled">
+                </div>
+
+                <div class="form-group">
+                    <label>契約開始希望日</label>
+                    <input type="date" id="startDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>連絡先電話番号</label>
+                    <input type="tel" id="phoneNumber" placeholder="090-1234-5678" required>
+                </div>
+
+                <div class="form-group">
+                    <label>連絡先メールアドレス</label>
+                    <input type="email" id="email" placeholder="example@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label>特記事項（任意）</label>
+                    <textarea id="notes" rows="3" placeholder="ご要望などがあればご記入ください"></textarea>
+                </div>
+
+                <div class="warning-box">
+                    <strong>📌 注意:</strong> 
+                    <ul style="margin-left: 20px; margin-top: 10px; line-height: 1.6;">
+                        <li>SBTによる本人確認済みのため、書類提出は不要です</li>
+                        <li>各事業者から確認の連絡が入る場合があります</li>
+                        <li>実際の契約開始日は事業者との調整により決定します</li>
+                    </ul>
+                </div>
+
+                <button type="button" class="btn" onclick="submitApplication()">
+                    一括申込を送信
+                </button>
+            </form>
+
+            <div id="applicationStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        // コントラクトアドレス
+        const SBT_CONTRACT_ADDRESS = "0xc9b1821620146021536f9962933773e5437693F9";
+        
+        const SBT_ABI = [
+            "function addressToTokenId(address) public view returns (uint256)",
+            "function getSBTData(uint256 tokenId) public view returns (tuple(string userId, uint256 issuedDate, uint256 expiryDate, bytes32 propertyHash, uint8 kycLevel, bool isValid))",
+            "function isValidSBT(uint256 tokenId) public view returns (bool)"
+        ];
+
+        let provider;
+        let signer;
+        let sbtContract;
+        let userAddress;
+        let sbtData;
+        let selectedUtilities = new Set();
+
+        // SBT確認
+        async function verifySBT() {
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    alert('MetaMaskをインストールしてください！');
+                    return;
+                }
+
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                userAddress = await signer.getAddress();
+
+                const network = await provider.getNetwork();
+                
+                if (network.chainId !== 11155111) {
+                    showStatus('sbtStatus', 'error', '❌ Sepoliaテストネットに切り替えてください');
+                    return;
+                }
+
+                sbtContract = new ethers.Contract(SBT_CONTRACT_ADDRESS, SBT_ABI, provider);
+                
+                const tokenId = await sbtContract.addressToTokenId(userAddress);
+                
+                if (tokenId.toString() === '0') {
+                    document.getElementById('sbtStatus').className = 'sbt-status not-verified';
+                    document.getElementById('sbtStatus').innerHTML = `
+                        <p style="font-size: 18px; color: #c62828;">❌ SBTを保有していません</p>
+                        <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                            このサービスを利用するには、まず入居者証明SBTを取得してください。
+                        </p>
+                    `;
+                    return;
+                }
+                
+                sbtData = await sbtContract.getSBTData(tokenId);
+                const isValid = await sbtContract.isValidSBT(tokenId);
+                
+                if (!isValid) {
+                    document.getElementById('sbtStatus').className = 'sbt-status not-verified';
+                    document.getElementById('sbtStatus').innerHTML = `
+                        <p style="font-size: 18px; color: #c62828;">❌ SBTが無効または期限切れです</p>
+                    `;
+                    return;
+                }
+                
+                // SBT情報を表示
+                const issuedDate = new Date(sbtData.issuedDate.toNumber() * 1000);
+                const expiryDate = new Date(sbtData.expiryDate.toNumber() * 1000);
+                
+                document.getElementById('sbtUserId').textContent = sbtData.userId;
+                document.getElementById('sbtIssuedDate').textContent = issuedDate.toLocaleDateString('ja-JP');
+                document.getElementById('sbtExpiryDate').textContent = expiryDate.toLocaleDateString('ja-JP');
+                document.getElementById('sbtKycLevel').textContent = sbtData.kycLevel === 1 ? '基本認証' : '拡張認証';
+                
+                document.getElementById('sbtStatus').className = 'sbt-status verified';
+                document.getElementById('sbtStatus').innerHTML = `
+                    <p style="font-size: 18px; color: #2e7d32; margin-bottom: 10px;">✅ SBT確認完了</p>
+                    <p style="font-size: 14px; color: #666;">本人確認済みです。ライフライン契約の申込ができます。</p>
+                `;
+                document.getElementById('sbtInfo').style.display = 'block';
+                document.getElementById('utilitySelection').style.display = 'block';
+                
+                // フォームに自動入力（デモ用のダミーデータ）
+                document.getElementById('contractorName').value = '山田 太郎';
+                document.getElementById('propertyAddress').value = '東京都渋谷区○○1-2-3 ○○マンション 101号室';
+                
+                // デフォルトの契約開始日を設定（1週間後）
+                const nextWeek = new Date();
+                nextWeek.setDate(nextWeek.getDate() + 7);
+                document.getElementById('startDate').value = nextWeek.toISOString().split('T')[0];
+                
+            } catch (error) {
+                console.error('SBT確認エラー:', error);
+                document.getElementById('sbtStatus').className = 'sbt-status not-verified';
+                document.getElementById('sbtStatus').innerHTML = `
+                    <p style="font-size: 18px; color: #c62828;">❌ エラーが発生しました</p>
+                    <p style="font-size: 14px; color: #666; margin-top: 10px;">${error.message}</p>
+                `;
+            }
+        }
+
+        // ライフライン選択トグル
+        function toggleUtility(utilityType) {
+            const card = event.currentTarget;
+            
+            if (selectedUtilities.has(utilityType)) {
+                selectedUtilities.delete(utilityType);
+                card.classList.remove('selected');
+            } else {
+                selectedUtilities.add(utilityType);
+                card.classList.add('selected');
+            }
+            
+            // 1つでも選択されていれば申込フォームを表示
+            if (selectedUtilities.size > 0) {
+                document.getElementById('applicationForm').style.display = 'block';
+                document.getElementById('applicationForm').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                document.getElementById('applicationForm').style.display = 'none';
+            }
+        }
+
+        // 申込送信
+        function submitApplication() {
+            if (selectedUtilities.size === 0) {
+                showApplicationStatus('error', '❌ 契約するサービスを選択してください');
+                return;
+            }
+            
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            const email = document.getElementById('email').value;
+            
+            if (!phoneNumber || !email) {
+                showApplicationStatus('error', '❌ 連絡先情報を入力してください');
+                return;
+            }
+            
+            // デモ用：実際にはバックエンドAPIに送信
+            showApplicationStatus('info', '<span class="loading"></span>申込を送信中...');
+            
+            setTimeout(() => {
+                const utilities = Array.from(selectedUtilities).map(u => {
+                    const names = { electric: '電気', gas: 'ガス', water: '水道' };
+                    return names[u];
+                }).join('、');
+                
+                showApplicationStatus('success', `
+                    ✅ 申込完了！<br><br>
+                    <strong>選択サービス:</strong> ${utilities}<br>
+                    <strong>契約者:</strong> ${document.getElementById('contractorName').value}<br>
+                    <strong>設置場所:</strong> ${document.getElementById('propertyAddress').value}<br>
+                    <strong>開始希望日:</strong> ${document.getElementById('startDate').value}<br><br>
+                    各事業者から確認の連絡が入ります。<br>
+                    SBTによる本人確認済みのため、書類提出は不要です。
+                `);
+            }, 2000);
+        }
+
+        // ステータス表示
+        function showStatus(elementId, type, message) {
+            const element = document.getElementById(elementId);
+            element.className = `sbt-status ${type}`;
+            element.innerHTML = message;
+        }
+
+        function showApplicationStatus(type, message) {
+            document.getElementById('applicationStatus').innerHTML = 
+                `<div class="status ${type}">${message}</div>`;
+        }
+
+        // ページ読み込み時
+        window.addEventListener('load', () => {
+            // 自動でSBT確認を試みる（MetaMaskがすでに接続されている場合）
+            if (window.ethereum && window.ethereum.selectedAddress) {
+                verifySBT();
+            }
+        });
+    </script>
+</body>
+</html>
