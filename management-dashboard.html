@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理画面 - 賃貸管理システム</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .stat-number.warning {
+            color: #ff9800;
+        }
+
+        .stat-number.danger {
+            color: #f44336;
+        }
+
+        .stat-number.success {
+            color: #4caf50;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8f9ff;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        tr:hover {
+            background: #f8f9ff;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .badge.warning {
+            background: #fff3cd;
+            color: #f57c00;
+        }
+
+        .badge.danger {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .badge.info {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn.small {
+            padding: 5px 15px;
+            font-size: 12px;
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        }
+
+        .btn.warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 4px solid #4caf50;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #f44336;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-left: 4px solid #2196f3;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close {
+            font-size: 30px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 管理画面</h1>
+            <p style="color: #666; margin-top: 10px;">賃貸管理システム - SBT発行・入金管理</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">発行済みSBT</div>
+                <div class="stat-number" id="totalSBTs">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label success">今月入金済み</div>
+                <div class="stat-number success" id="paidCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label warning">未入金</div>
+                <div class="stat-number warning" id="unpaidCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">入金率</div>
+                <div class="stat-number" id="paymentRate">-%</div>
+            </div>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+            <button class="tab active" onclick="switchTab('all')">すべて</button>
+            <button class="tab" onclick="switchTab('paid')">入金済み</button>
+            <button class="tab" onclick="switchTab('unpaid')">未入金</button>
+        </div>
+
+        <!-- SBT List -->
+        <div class="card">
+            <h2>
+                <span>🎫 発行済みSBT一覧</span>
+                <button class="btn" onclick="connectWallet()">MetaMask接続</button>
+            </h2>
+            
+            <div id="connectionStatus"></div>
+            
+            <div class="table-container">
+                <table id="sbtTable">
+                    <thead>
+                        <tr>
+                            <th>トークンID</th>
+                            <th>User ID</th>
+                            <th>発行日</th>
+                            <th>有効期限</th>
+                            <th>KYCレベル</th>
+                            <th>ステータス</th>
+                            <th>入金状況</th>
+                            <th>アクション</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sbtTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 40px; color: #999;">
+                                MetaMaskを接続してください
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Payment History -->
+        <div class="card">
+            <h2>💰 入金履歴</h2>
+            
+            <div class="table-container">
+                <table id="paymentTable">
+                    <thead>
+                        <tr>
+                            <th>支払日時</th>
+                            <th>入居者</th>
+                            <th>金額</th>
+                            <th>大家受取額</th>
+                            <th>管理会社受取額</th>
+                            <th>ステータス</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
+                                データを読み込み中...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reminder Modal -->
+    <div id="reminderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="color: #667eea;">💌 督促メール送信</h2>
+                <span class="close" onclick="closeReminderModal()">&times;</span>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <strong>送信先:</strong> <span id="reminderTarget"></span>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">件名:</label>
+                <input type="text" id="reminderSubject" value="【重要】家賃のお支払いについて" 
+                    style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;">
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">本文:</label>
+                <textarea id="reminderMessage" rows="8">いつもお世話になっております。
+
+今月の家賃のお支払いが確認できておりません。
+お手数ですが、お早めのお支払いをお願いいたします。
+
+すでにお支払いいただいている場合は、本メールを無視してください。
+
+ご不明な点がございましたら、お気軽にお問い合わせください。</textarea>
+            </div>
+            
+            <button class="btn" onclick="sendReminder()" style="width: 100%;">
+                督促メールを送信
+            </button>
+            
+            <div id="reminderStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        // コントラクトアドレス
+        const SBT_CONTRACT_ADDRESS = "0xc9b1821620146021536f9962933773e5437693F9";
+        const RENT_PAYMENT_ADDRESS = "0x77d1251Edac77cF4e4b8339dD74CECD61f90902b";
+        const TOKEN_ADDRESS = "0x179AFB0E44838E42D30953Da6f344479558e2Ef3";
+        
+        const SBT_ABI = [
+            "function getTotalPayments() external view returns (uint256)",
+            "function getSBTData(uint256 tokenId) public view returns (tuple(string userId, uint256 issuedDate, uint256 expiryDate, bytes32 propertyHash, uint8 kycLevel, bool isValid))",
+            "function isValidSBT(uint256 tokenId) public view returns (bool)"
+        ];
+
+        const RENT_PAYMENT_ABI = [
+            "function getTotalPayments() external view returns (uint256)",
+            "function getPaymentDetails(uint256 paymentId) external view returns (address tenant, uint256 amount, uint256 timestamp, address tokenAddress, bool isDistributed)",
+            "function getTenantPayments(address tenant) external view returns (uint256[] memory)"
+        ];
+
+        const TOKEN_ABI = [
+            "function decimals() external view returns (uint8)"
+        ];
+
+        let provider;
+        let sbtContract;
+        let rentContract;
+        let tokenContract;
+        let currentFilter = 'all';
+        let allSBTsData = [];
+        let currentReminderAddress;
+
+        // ウォレット接続
+        async function connectWallet() {
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    alert('MetaMaskをインストールしてください！');
+                    return;
+                }
+
+                showStatus('connectionStatus', 'info', '<span class="loading"></span>接続中...');
+
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                
+                const network = await provider.getNetwork();
+                
+                if (network.chainId !== 11155111) {
+                    showStatus('connectionStatus', 'error', '❌ Sepoliaテストネットに切り替えてください');
+                    return;
+                }
+
+                sbtContract = new ethers.Contract(SBT_CONTRACT_ADDRESS, SBT_ABI, provider);
+                rentContract = new ethers.Contract(RENT_PAYMENT_ADDRESS, RENT_PAYMENT_ABI, provider);
+                tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, provider);
+
+                showStatus('connectionStatus', 'success', '✅ 接続完了！データを読み込んでいます...');
+
+                await loadData();
+
+            } catch (error) {
+                console.error('接続エラー:', error);
+                showStatus('connectionStatus', 'error', '❌ エラー: ' + error.message);
+            }
+        }
+
+        // データ読み込み
+        async function loadData() {
+            try {
+                // デモ用のダミーデータを表示
+                // 実際の運用では、発行済みSBTをすべて取得する仕組みが必要
+                
+                // 統計データ（デモ）
+                document.getElementById('totalSBTs').textContent = '1';
+                document.getElementById('paidCount').textContent = '1';
+                document.getElementById('unpaidCount').textContent = '0';
+                document.getElementById('paymentRate').textContent = '100';
+
+                // SBT一覧（デモ: トークンID 1のみ）
+                await loadSBTList();
+                
+                // 入金履歴
+                await loadPaymentHistory();
+
+                showStatus('connectionStatus', 'success', '✅ データ読み込み完了');
+
+            } catch (error) {
+                console.error('データ読み込みエラー:', error);
+                showStatus('connectionStatus', 'error', '❌ データ読み込みエラー: ' + error.message);
+            }
+        }
+
+        // SBT一覧読み込み
+        async function loadSBTList() {
+            try {
+                // デモ: トークンID 1のみ表示
+                const tokenId = 1;
+                const sbtData = await sbtContract.getSBTData(tokenId);
+                const isValid = await sbtContract.isValidSBT(tokenId);
+                
+                const issuedDate = new Date(sbtData.issuedDate.toNumber() * 1000);
+                const expiryDate = new Date(sbtData.expiryDate.toNumber() * 1000);
+                
+                // 入金状況をチェック（デモ）
+                const tenantAddress = "0xEA61DAc26Dee68C9a56fBA6671aB6c4E2C7F8A11";
+                const payments = await rentContract.getTenantPayments(tenantAddress);
+                const hasPaid = payments.length > 0;
+                
+                allSBTsData = [{
+                    tokenId: tokenId,
+                    userId: sbtData.userId,
+                    issuedDate: issuedDate,
+                    expiryDate: expiryDate,
+                    kycLevel: sbtData.kycLevel,
+                    isValid: isValid,
+                    hasPaid: hasPaid,
+                    address: tenantAddress
+                }];
+                
+                renderSBTTable();
+
+            } catch (error) {
+                console.error('SBT一覧読み込みエラー:', error);
+            }
+        }
+
+        // SBTテーブル描画
+        function renderSBTTable() {
+            let filteredData = allSBTsData;
+            
+            if (currentFilter === 'paid') {
+                filteredData = allSBTsData.filter(sbt => sbt.hasPaid);
+            } else if (currentFilter === 'unpaid') {
+                filteredData = allSBTsData.filter(sbt => !sbt.hasPaid);
+            }
+            
+            if (filteredData.length === 0) {
+                document.getElementById('sbtTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px; color: #999;">
+                            該当するデータがありません
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            filteredData.forEach(sbt => {
+                const statusBadge = sbt.isValid ? 
+                    '<span class="badge success">✅ 有効</span>' : 
+                    '<span class="badge danger">❌ 無効</span>';
+                
+                const paymentBadge = sbt.hasPaid ? 
+                    '<span class="badge success">✅ 入金済み</span>' : 
+                    '<span class="badge warning">⚠️ 未入金</span>';
+                
+                const actionBtn = sbt.hasPaid ? 
+                    '<button class="btn small" disabled>督促不要</button>' : 
+                    `<button class="btn small warning" onclick="openReminderModal('${sbt.address}', '${sbt.userId}')">督促する</button>`;
+                
+                html += `
+                    <tr>
+                        <td>${sbt.tokenId}</td>
+                        <td>${sbt.userId}</td>
+                        <td>${sbt.issuedDate.toLocaleDateString('ja-JP')}</td>
+                        <td>${sbt.expiryDate.toLocaleDateString('ja-JP')}</td>
+                        <td>${sbt.kycLevel === 1 ? '基本' : '拡張'}</td>
+                        <td>${statusBadge}</td>
+                        <td>${paymentBadge}</td>
+                        <td>${actionBtn}</td>
+                    </tr>
+                `;
+            });
+            
+            document.getElementById('sbtTableBody').innerHTML = html;
+        }
+
+        // 入金履歴読み込み
+        async function loadPaymentHistory() {
+            try {
+                const totalPayments = await rentContract.getTotalPayments();
+                
+                if (totalPayments.toNumber() === 0) {
+                    document.getElementById('paymentTableBody').innerHTML = `
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
+                                まだ支払い履歴がありません
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                const decimals = await tokenContract.decimals();
+                let html = '';
+                
+                for (let i = totalPayments.toNumber() - 1; i >= 0; i--) {
+                    const payment = await rentContract.getPaymentDetails(i);
+                    const amount = ethers.utils.formatUnits(payment.amount, decimals);
+                    const landlordAmount = (parseFloat(amount) * 0.95).toFixed(0);
+                    const managementAmount = (parseFloat(amount) * 0.05).toFixed(0);
+                    const date = new Date(payment.timestamp.toNumber() * 1000);
+                    
+                    const statusBadge = payment.isDistributed ? 
+                        '<span class="badge success">✅ 分配済み</span>' : 
+                        '<span class="badge warning">⏳ 処理中</span>';
+                    
+                    html += `
+                        <tr>
+                            <td>${date.toLocaleString('ja-JP')}</td>
+                            <td>${payment.tenant.substring(0, 6)}...${payment.tenant.substring(38)}</td>
+                            <td>${parseFloat(amount).toLocaleString()} TJPY</td>
+                            <td>${parseInt(landlordAmount).toLocaleString()} TJPY</td>
+                            <td>${parseInt(managementAmount).toLocaleString()} TJPY</td>
+                            <td>${statusBadge}</td>
+                        </tr>
+                    `;
+                }
+                
+                document.getElementById('paymentTableBody').innerHTML = html;
+
+            } catch (error) {
+                console.error('入金履歴読み込みエラー:', error);
+            }
+        }
+
+        // タブ切り替え
+        function switchTab(filter) {
+            currentFilter = filter;
+            
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            renderSBTTable();
+        }
+
+        // 督促モーダル開く
+        function openReminderModal(address, userId) {
+            currentReminderAddress = address;
+            document.getElementById('reminderTarget').textContent = `${userId} (${address.substring(0, 6)}...${address.substring(38)})`;
+            document.getElementById('reminderModal').classList.add('show');
+        }
+
+        // 督促モーダル閉じる
+        function closeReminderModal() {
+            document.getElementById('reminderModal').classList.remove('show');
+            document.getElementById('reminderStatus').innerHTML = '';
+        }
+
+        // 督促送信
+        function sendReminder() {
+            const subject = document.getElementById('reminderSubject').value;
+            const message = document.getElementById('reminderMessage').value;
+            
+            if (!subject || !message) {
+                showReminderStatus('error', '❌ 件名と本文を入力してください');
+                return;
+            }
+            
+            showReminderStatus('info', '<span class="loading"></span>送信中...');
+            
+            // デモ用：実際にはバックエンドAPIでメール送信
+            setTimeout(() => {
+                showReminderStatus('success', `✅ 督促メールを送信しました<br><br>送信先: ${currentReminderAddress}`);
+                
+                setTimeout(() => {
+                    closeReminderModal();
+                }, 2000);
+            }, 1500);
+        }
+
+        // ステータス表示
+        function showStatus(elementId, type, message) {
+            document.getElementById(elementId).innerHTML = 
+                `<div class="status ${type}">${message}</div>`;
+        }
+
+        function showReminderStatus(type, message) {
+            document.getElementById('reminderStatus').innerHTML = 
+                `<div class="status ${type}">${message}</div>`;
+        }
+
+        // モーダル外クリックで閉じる
+        window.onclick = function(event) {
+            const modal = document.getElementById('reminderModal');
+            if (event.target === modal) {
+                closeReminderModal();
+            }
+        }
+    </script>
+</body>
+</html>
