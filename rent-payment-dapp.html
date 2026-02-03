@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家賃支払いシステム</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .wallet-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+
+        .network-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            background: #4caf50;
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .network-badge.disconnected {
+            background: #ff5722;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .balance-display {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .balance-amount {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .balance-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .form-group {
+            margin: 20px 0;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 4px solid #4caf50;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #f44336;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-left: 4px solid #2196f3;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .distribution {
+            display: flex;
+            justify-content: space-around;
+            margin: 30px 0;
+        }
+
+        .distribution-item {
+            text-align: center;
+            flex: 1;
+            margin: 0 10px;
+        }
+
+        .distribution-item .percentage {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .distribution-item .label {
+            color: #666;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .distribution-item .amount {
+            font-size: 20px;
+            color: #333;
+            margin-top: 5px;
+        }
+
+        .payment-history {
+            margin-top: 20px;
+        }
+
+        .payment-item {
+            background: #f8f9ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+
+        .payment-item .date {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .payment-item .amount {
+            font-size: 20px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 5px 0;
+        }
+
+        .link {
+            color: #667eea;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>💰 家賃支払いシステム</h1>
+            <p style="color: #666; margin-top: 10px;">ステーブルコインで家賃を支払い、自動で大家と管理会社に分配</p>
+            
+            <div class="wallet-info">
+                <div>
+                    <span class="network-badge disconnected" id="networkBadge">未接続</span>
+                    <span id="walletAddress" style="margin-left: 15px; color: #666;">ウォレット未接続</span>
+                </div>
+                <button class="btn" id="connectBtn" onclick="connectWallet()">MetaMask接続</button>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Left: Pay Rent -->
+            <div class="card">
+                <h2>💳 家賃支払い</h2>
+                
+                <div class="balance-display">
+                    <div class="balance-label">トークン残高</div>
+                    <div class="balance-amount" id="tokenBalance">0</div>
+                    <div class="balance-label">TJPY</div>
+                </div>
+
+                <div class="form-group">
+                    <label>支払い金額（TJPY）</label>
+                    <input type="number" id="paymentAmount" value="120000" placeholder="例: 120000">
+                </div>
+
+                <div class="info-box">
+                    <strong>💡 自動分配:</strong><br>
+                    支払いと同時に大家に95%、管理会社に5%が自動で送金されます
+                </div>
+
+                <button class="btn" id="approveBtn" onclick="approveToken()" disabled>
+                    ステップ1: トークン使用を承認
+                </button>
+
+                <button class="btn secondary" id="payBtn" onclick="payRent()" disabled style="margin-top: 10px;">
+                    ステップ2: 家賃を支払う
+                </button>
+
+                <div id="paymentStatus"></div>
+            </div>
+
+            <!-- Right: Payment Result -->
+            <div class="card">
+                <h2>📊 支払い結果</h2>
+                
+                <div id="resultDisplay">
+                    <p style="color: #666; text-align: center; padding: 40px 0;">
+                        支払い後、ここに分配結果が表示されます
+                    </p>
+                </div>
+
+                <div class="payment-history">
+                    <h3 style="color: #333; margin-bottom: 15px;">📜 支払い履歴</h3>
+                    <div id="historyDisplay">
+                        <p style="color: #666; text-align: center; padding: 20px;">
+                            まだ支払い履歴がありません
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="card" style="margin-top: 20px;">
+            <h2>📋 使い方</h2>
+            <ol style="margin-left: 20px; color: #666; line-height: 1.8;">
+                <li>「MetaMask接続」をクリック</li>
+                <li>トークン残高を確認（残高が少ない場合は「トークンを取得」で追加）</li>
+                <li>支払い金額を入力</li>
+                <li>「ステップ1: トークン使用を承認」をクリック</li>
+                <li>「ステップ2: 家賃を支払う」をクリック</li>
+                <li>自動的に大家95%、管理会社5%に分配されます</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // コントラクトアドレス
+        const TOKEN_ADDRESS = "0x179AFB0E44838E42D30953Da6f344479558e2Ef3";
+        const RENT_PAYMENT_ADDRESS = "0x77d1251Edac77cF4e4b8339dD74CECD61f90902b";
+        
+        const TOKEN_ABI = [
+            "function balanceOf(address account) external view returns (uint256)",
+            "function approve(address spender, uint256 amount) external returns (bool)",
+            "function allowance(address owner, address spender) external view returns (uint256)",
+            "function mint(uint256 amount) external",
+            "function decimals() external view returns (uint8)",
+            "function symbol() external view returns (string)"
+        ];
+
+        const RENT_PAYMENT_ABI = [
+            "function payRent(address tokenAddress, uint256 amount) external",
+            "function getTenantPayments(address tenant) external view returns (uint256[] memory)",
+            "function getPaymentDetails(uint256 paymentId) external view returns (address tenant, uint256 amount, uint256 timestamp, address tokenAddress, bool isDistributed)",
+            "function landlord() external view returns (address)",
+            "function managementCompany() external view returns (address)",
+            "event RentPaid(address indexed tenant, uint256 amount, address indexed tokenAddress, uint256 timestamp, uint256 paymentId)",
+            "event RentDistributed(uint256 indexed paymentId, address indexed landlord, uint256 landlordAmount, address indexed managementCompany, uint256 managementAmount)"
+        ];
+
+        let provider;
+        let signer;
+        let tokenContract;
+        let rentContract;
+        let userAddress;
+
+        // ウォレット接続
+        async function connectWallet() {
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    alert('MetaMaskをインストールしてください！');
+                    return;
+                }
+
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                userAddress = await signer.getAddress();
+
+                const network = await provider.getNetwork();
+                
+                document.getElementById('walletAddress').textContent = 
+                    userAddress.substring(0, 6) + '...' + userAddress.substring(38);
+                
+                if (network.chainId === 11155111) {
+                    document.getElementById('networkBadge').textContent = 'Sepolia';
+                    document.getElementById('networkBadge').classList.remove('disconnected');
+                    
+                    tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer);
+                    rentContract = new ethers.Contract(RENT_PAYMENT_ADDRESS, RENT_PAYMENT_ABI, signer);
+                    
+                    document.getElementById('approveBtn').disabled = false;
+                    
+                    await updateBalance();
+                    await loadPaymentHistory();
+                } else {
+                    document.getElementById('networkBadge').textContent = '間違ったネットワーク';
+                    showStatus('paymentStatus', 'error', 'Sepoliaテストネットに切り替えてください');
+                }
+
+            } catch (error) {
+                console.error('接続エラー:', error);
+                showStatus('paymentStatus', 'error', 'ウォレット接続エラー: ' + error.message);
+            }
+        }
+
+        // 残高更新
+        async function updateBalance() {
+            try {
+                const balance = await tokenContract.balanceOf(userAddress);
+                const decimals = await tokenContract.decimals();
+                const formatted = ethers.utils.formatUnits(balance, decimals);
+                document.getElementById('tokenBalance').textContent = parseFloat(formatted).toLocaleString();
+            } catch (error) {
+                console.error('残高取得エラー:', error);
+            }
+        }
+
+        // トークン承認
+        async function approveToken() {
+            try {
+                const approveBtn = document.getElementById('approveBtn');
+                approveBtn.disabled = true;
+                
+                showStatus('paymentStatus', 'info', '<span class="loading"></span>承認トランザクション送信中...');
+
+                const amount = document.getElementById('paymentAmount').value;
+                const decimals = await tokenContract.decimals();
+                const amountWei = ethers.utils.parseUnits(amount, decimals);
+                
+                const tx = await tokenContract.approve(RENT_PAYMENT_ADDRESS, amountWei);
+                
+                showStatus('paymentStatus', 'info', '<span class="loading"></span>ブロックチェーンでの確認を待っています...');
+                
+                await tx.wait();
+                
+                showStatus('paymentStatus', 'success', 
+                    '✅ 承認成功！次に「ステップ2: 家賃を支払う」ボタンをクリックしてください');
+                
+                document.getElementById('payBtn').disabled = false;
+                
+            } catch (error) {
+                console.error('承認エラー:', error);
+                showStatus('paymentStatus', 'error', '❌ エラー: ' + error.message);
+                document.getElementById('approveBtn').disabled = false;
+            }
+        }
+
+        // 家賃支払い
+        async function payRent() {
+            try {
+                const payBtn = document.getElementById('payBtn');
+                payBtn.disabled = true;
+                
+                showStatus('paymentStatus', 'info', '<span class="loading"></span>支払いトランザクション送信中...');
+
+                const amount = document.getElementById('paymentAmount').value;
+                const decimals = await tokenContract.decimals();
+                const amountWei = ethers.utils.parseUnits(amount, decimals);
+                
+                const tx = await rentContract.payRent(TOKEN_ADDRESS, amountWei);
+                
+                showStatus('paymentStatus', 'info', '<span class="loading"></span>ブロックチェーンでの確認を待っています...');
+                
+                const receipt = await tx.wait();
+                
+                // イベントから情報を取得
+                const paidEvent = receipt.events.find(e => e.event === 'RentPaid');
+                const distributedEvent = receipt.events.find(e => e.event === 'RentDistributed');
+                
+                if (distributedEvent) {
+                    const landlordAmount = ethers.utils.formatUnits(distributedEvent.args.landlordAmount, decimals);
+                    const managementAmount = ethers.utils.formatUnits(distributedEvent.args.managementAmount, decimals);
+                    
+                    document.getElementById('resultDisplay').innerHTML = `
+                        <div class="distribution">
+                            <div class="distribution-item">
+                                <div class="percentage">95%</div>
+                                <div class="label">大家</div>
+                                <div class="amount">${parseFloat(landlordAmount).toLocaleString()} TJPY</div>
+                            </div>
+                            <div class="distribution-item">
+                                <div class="percentage">5%</div>
+                                <div class="label">管理会社</div>
+                                <div class="amount">${parseFloat(managementAmount).toLocaleString()} TJPY</div>
+                            </div>
+                        </div>
+                        <div class="status success">
+                            ✅ 支払い成功！<br>
+                            Tx: <a href="https://sepolia.etherscan.io/tx/${receipt.transactionHash}" target="_blank" class="link">${receipt.transactionHash.substring(0, 10)}...</a>
+                        </div>
+                    `;
+                }
+                
+                showStatus('paymentStatus', 'success', '✅ 家賃支払い完了！自動分配されました');
+                
+                await updateBalance();
+                await loadPaymentHistory();
+                
+                document.getElementById('approveBtn').disabled = false;
+                document.getElementById('payBtn').disabled = true;
+                
+            } catch (error) {
+                console.error('支払いエラー:', error);
+                showStatus('paymentStatus', 'error', '❌ エラー: ' + error.message);
+                document.getElementById('payBtn').disabled = false;
+            }
+        }
+
+        // 支払い履歴読み込み
+        async function loadPaymentHistory() {
+            try {
+                const paymentIds = await rentContract.getTenantPayments(userAddress);
+                
+                if (paymentIds.length === 0) {
+                    return;
+                }
+                
+                let historyHTML = '';
+                const decimals = await tokenContract.decimals();
+                
+                for (let i = paymentIds.length - 1; i >= 0; i--) {
+                    const details = await rentContract.getPaymentDetails(paymentIds[i]);
+                    const amount = ethers.utils.formatUnits(details.amount, decimals);
+                    const date = new Date(details.timestamp.toNumber() * 1000);
+                    
+                    historyHTML += `
+                        <div class="payment-item">
+                            <div class="date">${date.toLocaleString('ja-JP')}</div>
+                            <div class="amount">${parseFloat(amount).toLocaleString()} TJPY</div>
+                            <div style="font-size: 12px; color: #666;">
+                                ${details.isDistributed ? '✅ 分配済み' : '⏳ 処理中'}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('historyDisplay').innerHTML = historyHTML;
+                
+            } catch (error) {
+                console.error('履歴読み込みエラー:', error);
+            }
+        }
+
+        // ステータス表示
+        function showStatus(elementId, type, message) {
+            document.getElementById(elementId).innerHTML = 
+                `<div class="status ${type}">${message}</div>`;
+        }
+
+        // ネットワーク変更を検知
+        if (window.ethereum) {
+            window.ethereum.on('chainChanged', () => {
+                window.location.reload();
+            });
+            
+            window.ethereum.on('accountsChanged', () => {
+                window.location.reload();
+            });
+        }
+
+        // トークンを取得（テスト用）
+        async function mintToken() {
+            try {
+                showStatus('paymentStatus', 'info', '<span class="loading"></span>トークンを取得中...');
+                const decimals = await tokenContract.decimals();
+                const amount = ethers.utils.parseUnits('500000', decimals);
+                const tx = await tokenContract.mint(amount);
+                await tx.wait();
+                showStatus('paymentStatus', 'success', '✅ 500,000 TJPY を取得しました！');
+                await updateBalance();
+            } catch (error) {
+                showStatus('paymentStatus', 'error', '❌ エラー: ' + error.message);
+            }
+        }
+        
+        // トークン取得ボタンを追加
+        document.addEventListener('DOMContentLoaded', () => {
+            const balanceDisplay = document.querySelector('.balance-display');
+            const mintBtn = document.createElement('button');
+            mintBtn.className = 'btn';
+            mintBtn.textContent = '🪙 トークンを取得（テスト用）';
+            mintBtn.onclick = mintToken;
+            mintBtn.style.marginTop = '15px';
+            mintBtn.style.fontSize = '14px';
+            mintBtn.style.padding = '8px 20px';
+            balanceDisplay.appendChild(mintBtn);
+        });
+    </script>
+</body>
+</html>
