@@ -282,6 +282,16 @@
             </div>
         </div>
 
+        <!-- SBT Status Card -->
+        <div class="card" style="margin-bottom: 20px;">
+            <h2>🎫 SBT認証ステータス</h2>
+            <div id="sbtStatus">
+                <p style="color: #666; text-align: center; padding: 20px;">
+                    ウォレットを接続してSBT認証状態を確認してください
+                </p>
+            </div>
+        </div>
+
         <div class="main-grid">
             <!-- Left: Pay Rent -->
             <div class="card">
@@ -340,6 +350,7 @@
             <h2>📋 使い方</h2>
             <ol style="margin-left: 20px; color: #666; line-height: 1.8;">
                 <li>「MetaMask接続」をクリック</li>
+                <li><strong>SBT認証状態を確認</strong>（有効なSBTがない場合は管理者に連絡）</li>
                 <li>トークン残高を確認（残高が少ない場合は「トークンを取得」で追加）</li>
                 <li>支払い金額を入力</li>
                 <li>「ステップ1: トークン使用を承認」をクリック</li>
@@ -353,6 +364,7 @@
         // コントラクトアドレス
         const TOKEN_ADDRESS = "0x179AFB0E44838E42D30953Da6f344479558e2Ef3";
         const RENT_PAYMENT_ADDRESS = "0x77d1251Edac77cF4e4b8339dD74CECD61f90902b";
+        const SBT_CONTRACT_ADDRESS = "0xd9145CCE52D386f254917e481eB44e9943F39138";
         
         const TOKEN_ABI = [
             "function balanceOf(address account) external view returns (uint256)",
@@ -373,10 +385,18 @@
             "event RentDistributed(uint256 indexed paymentId, address indexed landlord, uint256 landlordAmount, address indexed managementCompany, uint256 managementAmount)"
         ];
 
+        const SBT_ABI = [
+            "function addressToTokenId(address) external view returns (uint256)",
+            "function hasValidSBT(address account) external view returns (bool)",
+            "function getSBTData(uint256 tokenId) external view returns (tuple(string userId, uint256 issuedDate, uint256 expiryDate, bytes32 propertyHash, uint8 kycLevel, bool isValid))",
+            "function isValidSBT(uint256 tokenId) external view returns (bool)"
+        ];
+
         let provider;
         let signer;
         let tokenContract;
         let rentContract;
+        let sbtContract;
         let userAddress;
 
         // ウォレット接続
@@ -403,8 +423,10 @@
                     
                     tokenContract = new ethers.Contract(TOKEN_ADDRESS, TOKEN_ABI, signer);
                     rentContract = new ethers.Contract(RENT_PAYMENT_ADDRESS, RENT_PAYMENT_ABI, signer);
+                    sbtContract = new ethers.Contract(SBT_CONTRACT_ADDRESS, SBT_ABI, provider);
                     
-                    document.getElementById('approveBtn').disabled = false;
+                    // SBT認証チェック
+                    await checkSBT();
                     
                     await updateBalance();
                     await loadPaymentHistory();
@@ -417,6 +439,82 @@
                 console.error('接続エラー:', error);
                 showStatus('paymentStatus', 'error', 'ウォレット接続エラー: ' + error.message);
             }
+        }
+
+        // SBT認証チェック
+        async function checkSBT() {
+            try {
+                showSBTStatus('info', '<span class="loading"></span>SBT認証状態を確認中...');
+                
+                const hasValid = await sbtContract.hasValidSBT(userAddress);
+                
+                if (!hasValid) {
+                    const tokenId = await sbtContract.addressToTokenId(userAddress);
+                    
+                    if (tokenId.toNumber() === 0) {
+                        // SBT未発行
+                        showSBTStatus('error', `
+                            ❌ <strong>SBTが未発行です</strong><br><br>
+                            家賃の支払いにはSBT認証が必要です。<br>
+                            管理者に連絡してKYC認証を完了し、SBTを発行してもらってください。
+                        `);
+                        document.getElementById('approveBtn').disabled = true;
+                        document.getElementById('payBtn').disabled = true;
+                        return;
+                    } else {
+                        // SBT無効（期限切れ等）
+                        const sbtData = await sbtContract.getSBTData(tokenId);
+                        const expiryDate = new Date(sbtData.expiryDate.toNumber() * 1000);
+                        
+                        showSBTStatus('error', `
+                            ❌ <strong>SBTの有効期限が切れています</strong><br><br>
+                            <div style="margin-top: 10px; color: #666;">
+                                <strong>User ID:</strong> ${sbtData.userId}<br>
+                                <strong>Token ID:</strong> ${tokenId.toNumber()}<br>
+                                <strong>有効期限:</strong> ${expiryDate.toLocaleDateString('ja-JP')}<br>
+                            </div><br>
+                            管理者に連絡してSBTの更新を依頼してください。
+                        `);
+                        document.getElementById('approveBtn').disabled = true;
+                        document.getElementById('payBtn').disabled = true;
+                        return;
+                    }
+                }
+                
+                // SBT有効
+                const tokenId = await sbtContract.addressToTokenId(userAddress);
+                const sbtData = await sbtContract.getSBTData(tokenId);
+                const issuedDate = new Date(sbtData.issuedDate.toNumber() * 1000);
+                const expiryDate = new Date(sbtData.expiryDate.toNumber() * 1000);
+                
+                showSBTStatus('success', `
+                    ✅ <strong>SBT認証済み</strong><br><br>
+                    <div style="margin-top: 10px; color: #2e7d32;">
+                        <strong>User ID:</strong> ${sbtData.userId}<br>
+                        <strong>Token ID:</strong> ${tokenId.toNumber()}<br>
+                        <strong>KYCレベル:</strong> ${sbtData.kycLevel === 1 ? '基本' : '拡張'}<br>
+                        <strong>発行日:</strong> ${issuedDate.toLocaleDateString('ja-JP')}<br>
+                        <strong>有効期限:</strong> ${expiryDate.toLocaleDateString('ja-JP')}
+                    </div>
+                `);
+                
+                document.getElementById('approveBtn').disabled = false;
+                
+            } catch (error) {
+                console.error('SBTチェックエラー:', error);
+                showSBTStatus('error', `
+                    ❌ <strong>SBT確認エラー</strong><br><br>
+                    ${error.message}
+                `);
+                document.getElementById('approveBtn').disabled = true;
+                document.getElementById('payBtn').disabled = true;
+            }
+        }
+
+        // SBTステータス表示
+        function showSBTStatus(type, message) {
+            document.getElementById('sbtStatus').innerHTML = 
+                `<div class="status ${type}">${message}</div>`;
         }
 
         // 残高更新

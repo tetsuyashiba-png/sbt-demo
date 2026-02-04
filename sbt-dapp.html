@@ -353,7 +353,7 @@
                     <h3 style="color: #333; margin-bottom: 10px;">📋 コントラクト情報</h3>
                     <p><strong>ネットワーク:</strong> Sepolia Testnet</p>
                     <p><strong>コントラクトアドレス:</strong></p>
-                    <p id="contractAddress" style="font-family: monospace; font-size: 12px;">デプロイ後に表示されます</p>
+                    <p id="contractAddress" style="font-family: monospace; font-size: 12px;">接続後に表示されます</p>
                     <p style="margin-top: 10px;"><strong>注意:</strong> これはテストネットです。実際の価値はありません。</p>
                 </div>
             </div>
@@ -361,7 +361,7 @@
     </div>
 
     <script>
-        // コントラクト設定（実際にデプロイ後にアドレスを更新）
+        // コントラクト設定（最新版）
         const CONTRACT_ADDRESS = "0xd9145CCE52D386f254917e481eB44e9943F39138";
         
         const CONTRACT_ABI = [
@@ -386,30 +386,25 @@
                     return;
                 }
 
-                // MetaMask接続
                 await window.ethereum.request({ method: 'eth_requestAccounts' });
                 provider = new ethers.providers.Web3Provider(window.ethereum);
                 signer = provider.getSigner();
                 userAddress = await signer.getAddress();
 
-                // ネットワーク確認
                 const network = await provider.getNetwork();
                 
                 document.getElementById('walletAddress').textContent = 
                     userAddress.substring(0, 6) + '...' + userAddress.substring(38);
                 
-                if (network.chainId === 11155111) { // Sepolia
+                if (network.chainId === 11155111) {
                     document.getElementById('networkBadge').textContent = 'Sepolia';
                     document.getElementById('networkBadge').classList.remove('disconnected');
                     
-                    // コントラクトインスタンス作成
-                    if (CONTRACT_ADDRESS !== "YOUR_CONTRACT_ADDRESS_HERE") {
-                        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-                        document.getElementById('mintBtn').disabled = false;
-                        document.getElementById('contractAddress').textContent = CONTRACT_ADDRESS;
-                    } else {
-                        showStatus('mintStatus', 'info', '⚠️ コントラクトをデプロイしてアドレスを設定してください');
-                    }
+                    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                    document.getElementById('mintBtn').disabled = false;
+                    document.getElementById('contractAddress').textContent = CONTRACT_ADDRESS;
+                    
+                    showStatus('mintStatus', 'success', '✅ 接続成功！SBTの発行が可能です');
                 } else {
                     document.getElementById('networkBadge').textContent = '間違ったネットワーク';
                     showStatus('mintStatus', 'error', 'Sepoliaテストネットに切り替えてください');
@@ -438,14 +433,25 @@
                     return;
                 }
                 
-                // 入居者のウォレットアドレスを取得
                 const recipientAddress = document.getElementById('recipientAddress').value;
                 
-                // アドレスの検証
                 if (!recipientAddress || !ethers.utils.isAddress(recipientAddress)) {
                     showStatus('mintStatus', 'error', '❌ 有効な入居者のウォレットアドレスを入力してください');
                     mintBtn.disabled = false;
                     return;
+                }
+                
+                // すでにSBTを持っているかチェック
+                try {
+                    const existingTokenId = await contract.addressToTokenId(recipientAddress);
+                    if (existingTokenId.toNumber() !== 0) {
+                        showStatus('mintStatus', 'error', `❌ このアドレスはすでにSBT (Token ID: ${existingTokenId}) を保有しています`);
+                        mintBtn.disabled = false;
+                        return;
+                    }
+                } catch (error) {
+                    // addressToTokenIdでエラーが出た場合は続行
+                    console.log('既存SBTチェック:', error);
                 }
                 
                 showStatus('mintStatus', 'info', '<span class="loading"></span>トランザクション送信中...');
@@ -454,13 +460,9 @@
                 const propertyAddress = document.getElementById('propertyAddress').value;
                 const validityYears = parseInt(document.getElementById('validityYears').value);
                 
-                // 物件アドレスをハッシュ化
                 const propertyHash = ethers.utils.id(propertyAddress);
-                
-                // 有効期間を秒に変換（年 * 365日 * 24時間 * 60分 * 60秒）
                 const validityPeriod = validityYears * 365 * 24 * 60 * 60;
                 
-                // SBT発行トランザクション（入居者のアドレスに発行）
                 const tx = await contract.mintSBT(
                     recipientAddress,
                     userId,
@@ -473,7 +475,6 @@
                 
                 const receipt = await tx.wait();
                 
-                // イベントからトークンIDを取得（エラーハンドリング追加）
                 let tokenId = 'Unknown';
                 try {
                     const event = receipt.events?.find(e => e.event === 'SBTMinted');
@@ -486,44 +487,64 @@
                 
                 showStatus('mintStatus', 'success', 
                     `✅ SBT発行成功！<br>
+                    受取人: ${recipientAddress.substring(0, 6)}...${recipientAddress.substring(38)}<br>
                     ${tokenId !== 'Unknown' ? `トークンID: ${tokenId}<br>` : ''}
                     Tx: <a href="https://sepolia.etherscan.io/tx/${receipt.transactionHash}" target="_blank" class="link">${receipt.transactionHash.substring(0, 10)}...</a>`
                 );
                 
                 mintBtn.disabled = false;
                 
-                // 自動的にSBTを表示（受取人のアドレスで確認）
+                // 自動確認
                 document.getElementById('checkAddress').value = recipientAddress;
                 setTimeout(() => checkSBT(), 2000);
                 
             } catch (error) {
                 console.error('Mint エラー:', error);
-                showStatus('mintStatus', 'error', '❌ エラー: ' + error.message);
+                
+                let errorMsg = error.message;
+                if (error.message.includes('Address already has an SBT')) {
+                    errorMsg = 'このアドレスはすでにSBTを保有しています';
+                }
+                
+                showStatus('mintStatus', 'error', '❌ エラー: ' + errorMsg);
                 document.getElementById('mintBtn').disabled = false;
             }
         }
 
-        // SBT確認
+        // SBT確認（エラーハンドリング改善版）
         async function checkSBT() {
             try {
                 const address = document.getElementById('checkAddress').value;
                 
                 if (!ethers.utils.isAddress(address)) {
-                    showStatus('sbtDisplay', 'error', '無効なアドレスです');
+                    document.getElementById('sbtDisplay').innerHTML = 
+                        '<div class="status error">❌ 無効なアドレスです</div>';
                     return;
                 }
                 
                 if (!contract) {
                     document.getElementById('sbtDisplay').innerHTML = 
-                        '<div class="status error">ウォレットを接続してください</div>';
+                        '<div class="status error">❌ ウォレットを接続してください</div>';
                     return;
                 }
 
-                const tokenId = await contract.addressToTokenId(address);
+                // まずhasValidSBTで確認
+                const hasValid = await contract.hasValidSBT(address);
                 
-                if (tokenId.toString() === '0') {
+                // tokenIdを取得
+                let tokenId;
+                try {
+                    tokenId = await contract.addressToTokenId(address);
+                } catch (error) {
+                    console.error('addressToTokenId エラー:', error);
                     document.getElementById('sbtDisplay').innerHTML = 
-                        '<div class="status info">このアドレスはSBTを保有していません</div>';
+                        '<div class="status info">ℹ️ このアドレスはSBTを保有していません</div>';
+                    return;
+                }
+                
+                if (tokenId.toNumber() === 0) {
+                    document.getElementById('sbtDisplay').innerHTML = 
+                        '<div class="status info">ℹ️ このアドレスはSBTを保有していません</div>';
                     return;
                 }
                 
@@ -533,21 +554,26 @@
                 const issuedDate = new Date(sbtData.issuedDate.toNumber() * 1000);
                 const expiryDate = new Date(sbtData.expiryDate.toNumber() * 1000);
                 
+                const statusText = isValid ? '✅ 有効' : '❌ 無効/期限切れ';
+                const statusColor = isValid ? '#4caf50' : '#f44336';
+                
                 document.getElementById('sbtDisplay').innerHTML = `
                     <div class="sbt-display">
                         <h3>🎫 入居者証明SBT</h3>
+                        <div class="sbt-info"><strong>アドレス:</strong> ${address.substring(0, 6)}...${address.substring(38)}</div>
                         <div class="sbt-info"><strong>トークンID:</strong> ${tokenId.toString()}</div>
                         <div class="sbt-info"><strong>User ID:</strong> ${sbtData.userId}</div>
                         <div class="sbt-info"><strong>発行日:</strong> ${issuedDate.toLocaleDateString('ja-JP')}</div>
                         <div class="sbt-info"><strong>有効期限:</strong> ${expiryDate.toLocaleDateString('ja-JP')}</div>
                         <div class="sbt-info"><strong>KYCレベル:</strong> ${sbtData.kycLevel === 1 ? '基本認証' : '拡張認証'}</div>
-                        <div class="sbt-info"><strong>ステータス:</strong> ${isValid ? '✅ 有効' : '❌ 無効/期限切れ'}</div>
+                        <div class="sbt-info" style="background: ${statusColor}; color: white;"><strong>ステータス:</strong> ${statusText}</div>
                     </div>
                 `;
                 
             } catch (error) {
                 console.error('確認エラー:', error);
-                showStatus('sbtDisplay', 'error', 'エラー: ' + error.message);
+                document.getElementById('sbtDisplay').innerHTML = 
+                    `<div class="status error">❌ エラー: ${error.message}</div>`;
             }
         }
 
