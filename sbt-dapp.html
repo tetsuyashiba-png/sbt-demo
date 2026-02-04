@@ -473,20 +473,27 @@
                 
                 const receipt = await tx.wait();
                 
-                // イベントからトークンIDを取得
-                const event = receipt.events.find(e => e.event === 'SBTMinted');
-                const tokenId = event.args.tokenId.toString();
+                // イベントからトークンIDを取得（エラーハンドリング追加）
+                let tokenId = 'Unknown';
+                try {
+                    const event = receipt.events?.find(e => e.event === 'SBTMinted');
+                    if (event && event.args && event.args.tokenId) {
+                        tokenId = event.args.tokenId.toString();
+                    }
+                } catch (e) {
+                    console.log('イベント取得エラー（トランザクションは成功）:', e);
+                }
                 
                 showStatus('mintStatus', 'success', 
                     `✅ SBT発行成功！<br>
-                    トークンID: ${tokenId}<br>
+                    ${tokenId !== 'Unknown' ? `トークンID: ${tokenId}<br>` : ''}
                     Tx: <a href="https://sepolia.etherscan.io/tx/${receipt.transactionHash}" target="_blank" class="link">${receipt.transactionHash.substring(0, 10)}...</a>`
                 );
                 
                 mintBtn.disabled = false;
                 
-                // 自動的にSBTを表示
-                document.getElementById('checkAddress').value = userAddress;
+                // 自動的にSBTを表示（受取人のアドレスで確認）
+                document.getElementById('checkAddress').value = recipientAddress;
                 setTimeout(() => checkSBT(), 2000);
                 
             } catch (error) {
