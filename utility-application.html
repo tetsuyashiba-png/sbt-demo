@@ -439,9 +439,26 @@
                 document.getElementById('sbtInfo').style.display = 'block';
                 document.getElementById('utilitySelection').style.display = 'block';
                 
-                // フォームに自動入力（デモ用のダミーデータ）
-                document.getElementById('contractorName').value = '山田 太郎';
-                document.getElementById('propertyAddress').value = '東京都渋谷区○○1-2-3 ○○マンション 101号室';
+                // フォームに自動入力（User IDに基づいた情報）
+                // 本番環境ではバックエンドAPIから取得するが、デモ版ではUser IDでマッピング
+                const userDataMap = {
+                    'USER_2024_001': {
+                        name: '山田 太郎',
+                        address: '東京都渋谷区○○1-2-3 ○○マンション 101号室'
+                    },
+                    'USER_2024_002': {
+                        name: '猪熊 虎子',
+                        address: '東京都世田谷区○○1-2-3 ○○マンション 101号室'
+                    }
+                };
+                
+                const userData = userDataMap[sbtData.userId] || {
+                    name: sbtData.userId,
+                    address: '住所情報なし'
+                };
+                
+                document.getElementById('contractorName').value = userData.name;
+                document.getElementById('propertyAddress').value = userData.address;
                 
                 // デフォルトの契約開始日を設定（1週間後）
                 const nextWeek = new Date();
