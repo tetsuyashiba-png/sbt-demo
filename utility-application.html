@@ -439,26 +439,38 @@
                 document.getElementById('sbtInfo').style.display = 'block';
                 document.getElementById('utilitySelection').style.display = 'block';
                 
-                // フォームに自動入力（User IDに基づいた情報）
-                // 本番環境ではバックエンドAPIから取得するが、デモ版ではUser IDでマッピング
-                const userDataMap = {
-                    'USER_2024_001': {
-                        name: '山田 太郎',
-                        address: '東京都渋谷区○○1-2-3 ○○マンション 101号室'
-                    },
-                    'USER_2024_002': {
-                        name: '猪熊 虎子',
-                        address: '東京都世田谷区○○1-2-3 ○○マンション 101号室'
+                // Supabaseからユーザー情報を取得
+                try {
+                    const SUPABASE_URL = 'https://vdnmxuzltbarhxquqybg.supabase.co';
+                    const SUPABASE_KEY = 'sb_publishable_k0fjXuvHuZWp2rLlsLVfBw_rnoIVdJxZH0wSI04lZ-MsKXlOYDQIU';
+                    
+                    const response = await fetch(
+                        `${SUPABASE_URL}/rest/v1/users?user_id=eq.${sbtData.userId}`,
+                        {
+                            headers: {
+                                'apikey': SUPABASE_KEY,
+                                'Authorization': `Bearer ${SUPABASE_KEY}`
+                            }
+                        }
+                    );
+                    
+                    const userData = await response.json();
+                    
+                    if (userData && userData.length > 0) {
+                        // データベースからデータ取得成功
+                        document.getElementById('contractorName').value = userData[0].name;
+                        document.getElementById('propertyAddress').value = userData[0].address;
+                    } else {
+                        // データベースにデータがない場合はUser IDを表示
+                        document.getElementById('contractorName').value = sbtData.userId;
+                        document.getElementById('propertyAddress').value = '住所情報なし（データベースに未登録）';
                     }
-                };
-                
-                const userData = userDataMap[sbtData.userId] || {
-                    name: sbtData.userId,
-                    address: '住所情報なし'
-                };
-                
-                document.getElementById('contractorName').value = userData.name;
-                document.getElementById('propertyAddress').value = userData.address;
+                } catch (error) {
+                    console.error('データベース取得エラー:', error);
+                    // エラー時はUser IDを表示
+                    document.getElementById('contractorName').value = sbtData.userId;
+                    document.getElementById('propertyAddress').value = '住所情報の取得に失敗しました';
+                }
                 
                 // デフォルトの契約開始日を設定（1週間後）
                 const nextWeek = new Date();
