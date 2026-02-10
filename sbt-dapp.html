@@ -492,6 +492,38 @@
                     Tx: <a href="https://sepolia.etherscan.io/tx/${receipt.transactionHash}" target="_blank" class="link">${receipt.transactionHash.substring(0, 10)}...</a>`
                 );
                 
+                // データベースに個人情報を保存
+                try {
+                    const userName = document.getElementById('userName').value;
+                    const SUPABASE_URL = 'https://vdnmxuzltbarhxquqybg.supabase.co';
+                    const SUPABASE_KEY = 'sb_publishable_k0fjXuvHuZWp2rLlsLVfBw_rnoIVdJxZH0wSI04lZ-MsKXlOYDQIU';
+                    
+                    const dbResponse = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+                        method: 'POST',
+                        headers: {
+                            'apikey': SUPABASE_KEY,
+                            'Authorization': `Bearer ${SUPABASE_KEY}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=minimal'
+                        },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            name: userName,
+                            address: propertyAddress,
+                            phone: '未登録',
+                            email: '未登録'
+                        })
+                    });
+                    
+                    if (dbResponse.ok) {
+                        console.log('✅ データベースに保存成功');
+                    } else {
+                        console.log('⚠️ データベース保存エラー（SBTは発行済み）');
+                    }
+                } catch (dbError) {
+                    console.error('データベース保存エラー:', dbError);
+                }
+                
                 mintBtn.disabled = false;
                 
                 // 自動確認
