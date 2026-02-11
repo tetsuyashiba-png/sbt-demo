@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企業SBT発行システム</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+        }
+
+        .wallet-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 10px;
+        }
+
+        .network-badge {
+            background: #4caf50;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 4px solid #4caf50;
+            display: block;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #f44336;
+            display: block;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border-left: 4px solid #2196f3;
+            display: block;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #ffc107;
+            margin-bottom: 20px;
+        }
+
+        .link {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 企業SBT発行システム</h1>
+            <p class="subtitle">ライフライン企業に認証SBTを発行</p>
+            <div class="wallet-info">
+                <div>
+                    <span class="network-badge" id="networkBadge">未接続</span>
+                    <span id="walletAddress" style="margin-left: 10px; color: #666;">-</span>
+                </div>
+                <button class="btn" onclick="connectWallet()" style="width: auto; padding: 10px 20px;">
+                    MetaMask接続
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📝 企業SBT発行</h2>
+            
+            <div class="info-box">
+                <strong>⚠️ 注意</strong><br>
+                このページは管理者（あなた）のみが使用できます。<br>
+                認可されたライフライン企業にのみSBTを発行してください。
+            </div>
+
+            <div class="form-group">
+                <label>企業名</label>
+                <input type="text" id="companyName" placeholder="例: 東京電力">
+            </div>
+
+            <div class="form-group">
+                <label>企業のウォレットアドレス <span style="color: #f44336;">*</span></label>
+                <input type="text" id="companyAddress" placeholder="0x..." style="font-family: monospace;">
+                <p style="font-size: 12px; color: #666; margin-top: 5px;">
+                    企業のMetaMaskアドレスを入力してください
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label>事業種別</label>
+                <select id="businessType">
+                    <option value="電気">電気</option>
+                    <option value="ガス">ガス</option>
+                    <option value="水道">水道</option>
+                    <option value="総合">総合（電気・ガス・水道）</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>有効期間（年）</label>
+                <select id="validityYears">
+                    <option value="1">1年</option>
+                    <option value="2" selected>2年</option>
+                    <option value="3">3年</option>
+                    <option value="5">5年</option>
+                </select>
+            </div>
+
+            <button class="btn" id="mintBtn" onclick="mintCompanySBT()">企業SBTを発行</button>
+
+            <div id="mintStatus" class="status"></div>
+        </div>
+    </div>
+
+    <script>
+        const COMPANY_SBT_ADDRESS = "0xeF3E3cA47975f536092Dd55A9897E8251B4fC20C";
+        
+        const COMPANY_SBT_ABI = [
+            "function mintCompanySBT(address to, string companyName, string businessType, uint256 validityPeriod) public returns (uint256)",
+            "function hasValidCompanySBT(address account) public view returns (bool)",
+            "function addressToTokenId(address) public view returns (uint256)",
+            "function getCompanyData(uint256) public view returns (tuple(string companyName, string businessType, uint256 issuedDate, uint256 expiryDate, bool isValid))"
+        ];
+
+        let provider;
+        let signer;
+        let contract;
+        let userAddress;
+
+        async function connectWallet() {
+            try {
+                if (typeof window.ethereum === 'undefined') {
+                    alert('MetaMaskをインストールしてください！');
+                    return;
+                }
+
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                userAddress = await signer.getAddress();
+
+                const network = await provider.getNetwork();
+                
+                if (network.chainId !== 11155111) {
+                    document.getElementById('networkBadge').textContent = '❌ 間違ったネットワーク';
+                    document.getElementById('networkBadge').style.background = '#f44336';
+                    alert('Sepoliaテストネットに切り替えてください');
+                    return;
+                }
+
+                document.getElementById('networkBadge').textContent = 'Sepolia';
+                document.getElementById('walletAddress').textContent = userAddress.substring(0, 6) + '...' + userAddress.substring(38);
+
+                contract = new ethers.Contract(COMPANY_SBT_ADDRESS, COMPANY_SBT_ABI, signer);
+
+            } catch (error) {
+                console.error('接続エラー:', error);
+                alert('MetaMask接続に失敗しました');
+            }
+        }
+
+        async function mintCompanySBT() {
+            if (!contract) {
+                alert('先にMetaMaskを接続してください');
+                return;
+            }
+
+            const mintBtn = document.getElementById('mintBtn');
+            mintBtn.disabled = true;
+
+            try {
+                const companyName = document.getElementById('companyName').value;
+                const companyAddress = document.getElementById('companyAddress').value;
+                const businessType = document.getElementById('businessType').value;
+                const validityYears = parseInt(document.getElementById('validityYears').value);
+
+                if (!companyName || !companyAddress) {
+                    showStatus('error', '❌ 企業名とアドレスを入力してください');
+                    mintBtn.disabled = false;
+                    return;
+                }
+
+                if (!ethers.utils.isAddress(companyAddress)) {
+                    showStatus('error', '❌ 有効なアドレスを入力してください');
+                    mintBtn.disabled = false;
+                    return;
+                }
+
+                // 重複チェック
+                const hasExisting = await contract.hasValidCompanySBT(companyAddress);
+                if (hasExisting) {
+                    showStatus('error', '❌ このアドレスは既に企業SBTを保有しています');
+                    mintBtn.disabled = false;
+                    return;
+                }
+
+                showStatus('info', '<span class="loading"></span>トランザクション送信中...');
+
+                // 有効期間を秒に変換
+                const validityPeriod = validityYears * 365 * 24 * 60 * 60;
+
+                const tx = await contract.mintCompanySBT(
+                    companyAddress,
+                    companyName,
+                    businessType,
+                    validityPeriod
+                );
+
+                showStatus('info', '<span class="loading"></span>ブロックチェーンでの確認を待っています...');
+
+                const receipt = await tx.wait();
+
+                showStatus('success', 
+                    `✅ 企業SBT発行成功！<br>
+                    企業名: ${companyName}<br>
+                    事業種別: ${businessType}<br>
+                    発行先: ${companyAddress.substring(0, 6)}...${companyAddress.substring(38)}<br>
+                    Tx: <a href="https://sepolia.etherscan.io/tx/${receipt.transactionHash}" target="_blank" class="link">${receipt.transactionHash.substring(0, 10)}...</a>`
+                );
+
+                // フォームをクリア
+                document.getElementById('companyName').value = '';
+                document.getElementById('companyAddress').value = '';
+
+            } catch (error) {
+                console.error('発行エラー:', error);
+                showStatus('error', '❌ エラー: ' + error.message);
+            }
+
+            mintBtn.disabled = false;
+        }
+
+        function showStatus(type, message) {
+            const statusDiv = document.getElementById('mintStatus');
+            statusDiv.className = 'status ' + type;
+            statusDiv.innerHTML = message;
+        }
+    </script>
+</body>
+</html>

@@ -362,21 +362,37 @@
     <script>
         // コントラクトアドレス
         const SBT_CONTRACT_ADDRESS = "0xFE585e9240d4891c4f92aFbF33Aa55CE80Df6514";
+        const COMPANY_SBT_ADDRESS = "0xeF3E3cA47975f536092Dd55A9897E8251B4fC20C";
+        const ACCESS_CONTROL_ADDRESS = "0x26a78CaC4c553e2D4Cf61493ad493C4012a5F225";
         
         const SBT_ABI = [
             "function addressToTokenId(address) public view returns (uint256)",
             "function getSBTData(uint256 tokenId) public view returns (tuple(string userId, uint256 issuedDate, uint256 expiryDate, bytes32 propertyHash, uint8 kycLevel, bool isValid))",
             "function isValidSBT(uint256 tokenId) public view returns (bool)"
         ];
+        
+        const COMPANY_SBT_ABI = [
+            "function hasValidCompanySBT(address) public view returns (bool)",
+            "function addressToTokenId(address) public view returns (uint256)",
+            "function getCompanyData(uint256) public view returns (tuple(string companyName, string businessType, uint256 issuedDate, uint256 expiryDate, bool isValid))"
+        ];
+        
+        const ACCESS_CONTROL_ABI = [
+            "function canAccessData(address tenant, address company) public view returns (bool)",
+            "function logAccess(address tenant, address company, string action) public"
+        ];
 
         let provider;
         let signer;
         let sbtContract;
+        let companySBTContract;
+        let accessControlContract;
         let userAddress;
+        let companyAddress;
         let sbtData;
         let selectedUtilities = new Set();
 
-        // SBT確認
+        // SBT確認（企業認証付き）
         async function verifySBT() {
             try {
                 if (typeof window.ethereum === 'undefined') {
@@ -418,6 +434,39 @@
                     document.getElementById('sbtStatus').className = 'sbt-status not-verified';
                     document.getElementById('sbtStatus').innerHTML = `
                         <p style="font-size: 18px; color: #c62828;">❌ SBTが無効または期限切れです</p>
+                    `;
+                    return;
+                }
+                
+                // 企業SBT認証チェック
+                companySBTContract = new ethers.Contract(COMPANY_SBT_ADDRESS, COMPANY_SBT_ABI, provider);
+                companyAddress = await signer.getAddress(); // 企業側のアドレス
+                
+                const hasCompanySBT = await companySBTContract.hasValidCompanySBT(companyAddress);
+                
+                if (!hasCompanySBT) {
+                    document.getElementById('sbtStatus').className = 'sbt-status not-verified';
+                    document.getElementById('sbtStatus').innerHTML = `
+                        <p style="font-size: 18px; color: #c62828;">⚠️ 企業認証エラー</p>
+                        <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                            このサービスを利用するには、認可されたライフライン企業のSBTが必要です。<br>
+                            企業SBTをお持ちでない場合は、管理者にお問い合わせください。
+                        </p>
+                    `;
+                    return;
+                }
+                
+                // アクセス権限チェック
+                accessControlContract = new ethers.Contract(ACCESS_CONTROL_ADDRESS, ACCESS_CONTROL_ABI, signer);
+                const canAccess = await accessControlContract.canAccessData(userAddress, companyAddress);
+                
+                if (!canAccess) {
+                    document.getElementById('sbtStatus').className = 'sbt-status not-verified';
+                    document.getElementById('sbtStatus').innerHTML = `
+                        <p style="font-size: 18px; color: #c62828;">❌ アクセス権限がありません</p>
+                        <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                            入居者SBTまたは企業SBTが無効です。
+                        </p>
                     `;
                     return;
                 }
