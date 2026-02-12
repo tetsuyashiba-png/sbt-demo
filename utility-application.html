@@ -440,11 +440,27 @@
                 
                 // 企業SBT認証チェック
                 companySBTContract = new ethers.Contract(COMPANY_SBT_ADDRESS, COMPANY_SBT_ABI, provider);
-                companyAddress = await signer.getAddress(); // 企業側のアドレス
                 
-                const hasCompanySBT = await companySBTContract.hasValidCompanySBT(companyAddress);
+                // 認可されたライフライン企業リスト
+                const authorizedCompanies = [
+                    { name: "東京電力", address: "0x12f139d3baec62649Cda150eeE840485Ace8a62f" },
+                    { name: "東京ガス", address: "0x1801B2be8b3Fb8C69B23265B5E942C1b1757eCe6" },
+                    { name: "東京都水道局", address: "0x0E4E66f61ee01B4f64f9Ad708a75CAb6d4AbfAe6" }
+                ];
                 
-                if (!hasCompanySBT) {
+                // いずれかの企業が有効なSBTを持っているかチェック
+                let hasValidCompany = false;
+                let validCompanies = [];
+                
+                for (const company of authorizedCompanies) {
+                    const hasCompanySBT = await companySBTContract.hasValidCompanySBT(company.address);
+                    if (hasCompanySBT) {
+                        hasValidCompany = true;
+                        validCompanies.push(company.name);
+                    }
+                }
+                
+                if (!hasValidCompany) {
                     document.getElementById('sbtStatus').className = 'sbt-status not-verified';
                     document.getElementById('sbtStatus').innerHTML = `
                         <p style="font-size: 18px; color: #c62828;">⚠️ 企業認証エラー</p>
@@ -456,8 +472,19 @@
                     return;
                 }
                 
-                // アクセス権限チェック
+                // アクセス権限チェック（最初の有効な企業アドレスを使用）
                 accessControlContract = new ethers.Contract(ACCESS_CONTROL_ADDRESS, ACCESS_CONTROL_ABI, signer);
+                
+                // 有効な企業のうち最初のアドレスを取得
+                let companyAddress = null;
+                for (const company of authorizedCompanies) {
+                    const hasCompanySBT = await companySBTContract.hasValidCompanySBT(company.address);
+                    if (hasCompanySBT) {
+                        companyAddress = company.address;
+                        break;
+                    }
+                }
+                
                 const canAccess = await accessControlContract.canAccessData(userAddress, companyAddress);
                 
                 if (!canAccess) {
