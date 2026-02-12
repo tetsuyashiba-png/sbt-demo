@@ -252,17 +252,32 @@
         <!-- Header -->
         <div class="header">
             <h1>⚡ ライフライン契約申込</h1>
+            <p style="color: #666; margin-top: 5px;">Utility Service Application</p>
             <p style="color: #666; margin-top: 10px;">SBTで本人確認済み - 簡単に電気・ガス・水道を契約</p>
+            <p style="color: #666; font-size: 13px;">Identity verified with SBT - Easy application for electricity, gas, and water</p>
+            
+            <!-- 警告メッセージ -->
+            <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); color: white; padding: 15px; border-radius: 10px; margin-top: 15px; border-left: 5px solid #c92a2a;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 24px; margin-right: 10px;">⚠️</span>
+                    <strong style="font-size: 16px;">重要：これはプロトタイプ（デモ）です</strong>
+                </div>
+                <p style="margin: 5px 0; font-size: 14px;">❌ 実際の個人情報は入力しないでください</p>
+                <p style="margin: 5px 0; font-size: 13px; opacity: 0.95;">❌ Do NOT enter real personal information</p>
+                <p style="margin: 5px 0; font-size: 14px;">✅ テストデータのみを使用してください</p>
+                <p style="margin: 5px 0; font-size: 13px; opacity: 0.95;">✅ Please use test data only</p>
+            </div>
         </div>
 
         <!-- SBT Verification -->
         <div class="card">
-            <h2>🎫 SBT確認</h2>
+            <h2>🎫 SBT確認 / SBT Verification</h2>
             
             <div id="sbtStatus" class="sbt-status not-verified">
-                <p style="font-size: 18px; margin-bottom: 10px;">⏳ SBTを確認中...</p>
+                <p style="font-size: 18px; margin-bottom: 10px;">⏳ SBTを確認中... / Verifying SBT...</p>
                 <button class="btn" onclick="verifySBT()" style="max-width: 300px; margin: 10px auto;">
-                    MetaMask接続してSBTを確認
+                    MetaMask接続してSBTを確認<br>
+                    <span style="font-size: 12px;">Connect MetaMask to Verify SBT</span>
                 </button>
             </div>
 
@@ -279,40 +294,41 @@
 
         <!-- Utility Selection -->
         <div class="card" id="utilitySelection" style="display: none;">
-            <h2>📋 契約するサービスを選択</h2>
+            <h2>📋 契約するサービスを選択 / Select Services</h2>
             
             <div class="utility-grid">
                 <div class="utility-card" onclick="toggleUtility('electric')">
                     <div class="utility-icon">💡</div>
-                    <div class="utility-name">電気</div>
+                    <div class="utility-name">電気 / Electricity</div>
                     <div class="utility-provider">○○電力</div>
                 </div>
                 
                 <div class="utility-card" onclick="toggleUtility('gas')">
                     <div class="utility-icon">🔥</div>
-                    <div class="utility-name">ガス</div>
+                    <div class="utility-name">ガス / Gas</div>
                     <div class="utility-provider">○○ガス</div>
                 </div>
                 
                 <div class="utility-card" onclick="toggleUtility('water')">
                     <div class="utility-icon">💧</div>
-                    <div class="utility-name">水道</div>
-                    <div class="utility-provider">渋谷区水道局</div>
+                    <div class="utility-name">水道 / Water</div>
+                    <div class="utility-provider">テスト区水道局</div>
                 </div>
             </div>
 
             <div class="warning-box">
-                <strong>💡 ヒント:</strong> 複数選択可能です。選択したサービスに対して一括で申込できます。
+                <strong>💡 ヒント / Hint:</strong> 複数選択可能です。選択したサービスに対して一括で申込できます。<br>
+                <span style="font-size: 12px;">Multiple selections allowed. Apply for all selected services at once.</span>
             </div>
         </div>
 
         <!-- Application Form -->
         <div class="card" id="applicationForm" style="display: none;">
-            <h2>📝 契約情報入力</h2>
+            <h2>📝 契約情報入力 / Contract Information</h2>
             
             <form id="contractForm">
                 <div class="form-group">
-                    <label>契約者氏名 <span class="auto-badge">SBTから自動入力</span></label>
+                    <label>契約者氏名 / Name <span class="auto-badge">SBTから自動入力 / Auto-filled from SBT</span></label>
                     <input type="text" id="contractorName" readonly class="auto-filled">
                 </div>
 
